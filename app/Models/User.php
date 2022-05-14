@@ -61,4 +61,9 @@ class User extends Authenticatable implements JWTSubject
     {
         return [];
     }
+
+    public function historico()
+    {
+        return $this->belongsTo(HistoricoConversao::class, 'id_usuario');
+    }
 }

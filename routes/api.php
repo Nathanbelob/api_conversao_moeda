@@ -20,6 +20,7 @@ Route::post('/login', [UsuarioController::class, 'login']);
 
 Route::group(['middleware' => 'api'], function($router) {
     Route::post('/conversao', [ConversaoController::class, 'conversao']);
+    Route::get('/initialize', [ConversaoController::class, 'initialize']);
 });
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {

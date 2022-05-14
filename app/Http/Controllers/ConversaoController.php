@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Http\Requests\ConversaoRequest; 
+use App\Services\AwesomeAPIService;
+use App\Models\HistoricoConversao;
 
 
 class ConversaoController extends Controller
@@ -24,27 +26,52 @@ class ConversaoController extends Controller
         $this->middleware('auth:api');
     }
 
-    public function conversao(ConversaoRequest $request) : object
+    public function initialize()
     {
         $retorno = new \stdClass;
-        $validacao = $request->validated();
-        $this->valorConversao = 5.3;//pegar da api de conversao
-        $this->calculaConversao($request->forma_pagamento, $request->valor)
-             ->montaRetorno($retorno, $request);
+        $usuario = \Auth::user();
+        $moedas = array_keys((array)(new AwesomeAPIService())->buscaMoedas());
+        $retorno->usuario = $usuario;
+        $retorno->moedas = $moedas;
+        
+        return $retorno;
+    }
+
+    public function conversao(ConversaoRequest $request)
+    {
+        try{
+            $retorno = new \stdClass;
+            $validacao = $request->validated();
+            $this->defineValorCambio($request)
+                 ->calculaConversao($request)
+                 ->montaRetorno($retorno, $request)
+                 ->salvaHistorico($retorno);
+        }catch(\Exception $e)
+        {
+            return $e->getMessage();
+        }
 
         return $retorno;
     }
 
-    private function calculaConversao(String $formaPagamento, float $valor)
+    private function calculaConversao($request)
     {
-        $taxaPagamento = $formaPagamento == 'BLT' ? self::TAXA_BOLETO : self::TAXA_CARTAO;
-        $this->taxaPagamento = $valor/100*$taxaPagamento;
+        $taxaPagamento = $request->forma_pagamento == 'BLT' ? self::TAXA_BOLETO : self::TAXA_CARTAO;
+        $this->taxaPagamento = $request->valor/100*$taxaPagamento;
 
-        $taxaConversao = $valor < self::CONTROLE_TAXA_PAGAMENTO ? self::MAIOR_TAXA_PAGAMNTO : self::MENOR_TAXA_PAGAMNTO;
-        $this->taxaConversao = $valor/100*$taxaConversao;
+        $taxaConversao = $request->valor < self::CONTROLE_TAXA_PAGAMENTO ? self::MAIOR_TAXA_PAGAMNTO : self::MENOR_TAXA_PAGAMNTO;
+        $this->taxaConversao = $request->valor/100*$taxaConversao;
 
         $taxaTotal = $this->taxaConversao + $this->taxaPagamento;
-        $this->valorParaConversao = $valor - $taxaTotal;
+        $this->valorParaConversao = $request->valor - $taxaTotal;
+
+        return $this;
+    }
+
+    private function defineValorCambio($request)
+    {
+        $moedas = (array)(new AwesomeAPIService())->buscaMoedas();
+        $this->valorConversao = $moedas[$request->moeda_destino]->high;
 
         return $this;
     }
@@ -59,6 +86,16 @@ class ConversaoController extends Controller
         $retorno->valor_comprado_moeda_destino = round($this->valorParaConversao/$this->valorConversao, 2);
         $retorno->taxa_conversao = $this->taxaConversao;
         $retorno->taxa_pagamento = $this->taxaPagamento;
-        $retorno->valor_usado_conversao = $this->valorParaConversao;
+        $retorno->valor_usado_conversao = $this->valorParaConversao;    
+
+        return $this;
+    }
+
+    public function salvaHistorico($retorno)
+    {
+        $retorno->id_usuario = \Auth::id();
+        HistoricoConversao::create((array)$retorno);
+
+        return $this;
     }
 }
