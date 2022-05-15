@@ -8,6 +8,25 @@ use Illuminate\Http\Request;
 
 class UsuarioController extends Controller
 {
+    private $code;
+
+    public function __construct()
+    {
+        $this->middleware('auth:api', ['except' => ['login']]);
+        $this->code = config('httpstatus.success.ok');
+    }
+
+    public function initialize()
+    {
+        $retorno = \Auth::user();
+
+        if(!$retorno)
+        {
+            $this->code = config('httpstatus.server_error.internal_server_error');
+        }
+        
+        return response()->json($retorno, $this->code);
+    }
 
     public function login(LoginRequest $request)
     {
@@ -17,13 +36,25 @@ class UsuarioController extends Controller
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
-
         return response()->json([
             'access_token' => $token,
             'token_type' => 'bearer',
             'expires_in' => auth()->factory()->getTTL() * 60
         ]);
     }
+
+    /**
+     * Logout user
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function logout()
+    {
+        auth()->logout();
+
+        return response()->json(['message' => 'User successfully logged out.']);
+    }
+
     /**
      * Display a listing of the resource.
      *

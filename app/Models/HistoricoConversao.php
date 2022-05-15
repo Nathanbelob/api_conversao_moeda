@@ -26,12 +26,19 @@ class HistoricoConversao extends Model
         "valor_comprado_moeda_destino",
         "taxa_conversao",
         "taxa_pagamento",
-        "valor_usado_conversao"
+        "valor_usado_conversao",
+        "created_at",
+        "updated_at"    
     ];
 
     public function usuario()
     {
         return $this->hasOne(User::class, 'id', 'id_usuario');
+    }
+
+    public function getCreatedAtAttribute($value)
+    {
+        return date("d/m/Y H:i:s", strtotime($value));
     }
 
           

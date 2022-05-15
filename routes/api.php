@@ -2,7 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\{UsuarioController, ConversaoController};
+use App\Http\Controllers\{UsuarioController, ConversaoController, HistoricoConversaoController};
 
 
 /*
@@ -19,8 +19,11 @@ use App\Http\Controllers\{UsuarioController, ConversaoController};
 Route::post('/login', [UsuarioController::class, 'login']);
 
 Route::group(['middleware' => 'api'], function($router) {
-    Route::post('/conversao', [ConversaoController::class, 'conversao']);
-    Route::get('/initialize', [ConversaoController::class, 'initialize']);
+    Route::post('/logout',             [UsuarioController::class, 'logout']);
+    Route::post('/conversao',          [ConversaoController::class, 'conversao']);
+    Route::get('conversao/initialize', [ConversaoController::class, 'initialize']);
+    Route::get('historico/initialize', [HistoricoConversaoController::class, 'initialize']);
+    Route::get('usuario/initialize',   [UsuarioController::class, 'initialize']);
 });
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {

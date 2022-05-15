@@ -1,61 +1,47 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\BO;
 
 use Illuminate\Http\Request;
 use App\Http\Requests\ConversaoRequest; 
 use App\Services\AwesomeAPIService;
-use App\Http\BO\ConversaoBO;
+use App\Http\BO\HistoricoConversaoBO;
 
 
-class ConversaoController extends Controller
+class ConversaoBO
 {
     private $taxaConversao;
     private $taxaPagamento;
     private $valorParaConversao;
     private $valorConversao;
-    private $code;
-    private $message;
     CONST TAXA_CARTAO = 7.63;
     CONST TAXA_BOLETO = 1.45;
     CONST CONTROLE_TAXA_PAGAMENTO = 3000;
-    CONST TAXA_PAGAMNTO = 3000;
-    CONST MAIOR_TAXA_PAGAMNTO = 2;
-    CONST MENOR_TAXA_PAGAMNTO = 1;
-
-    public function __construct()
-    {
-        $this->code = config('httpstatus.success.ok');
-        $this->middleware('auth:api');
-    }
+    CONST TAXA_PAGAMENTO = 3000;
+    CONST MAIOR_TAXA_PAGAMENTO = 2;
+    CONST MENOR_TAXA_PAGAMENTO = 1;
 
     public function initialize()
     {
-        $conversaoBO = new ConversaoBO();
-        $retorno = $conversaoBO->initialize();
-
-        if(!$retorno)
-        {
-            $this->code = config('httpstatus.server_error.internal_server_error');
-        }
+        $retorno = new \stdClass;
+        $usuario = \Auth::user();
+        $moedas = array_keys((array)(new AwesomeAPIService())->buscaMoedas());
+        $retorno->usuario = $usuario;
+        $retorno->moedas = $moedas;
         
-        return response()->json($retorno, $this->code);
+        return $retorno;
     }
 
     public function conversao(ConversaoRequest $request)
     {
-
         $retorno = new \stdClass;
-        $conversaoBO = new ConversaoBO();
-        $retorno->data = $conversaoBO->conversao($request);
+        $validacao = $request->validated();
+        $this->defineValorCambio($request)
+             ->calculaConversao($request)
+             ->montaRetorno($retorno, $request)
+             ->salvaHistorico($retorno);
 
-        if(!$retorno->data)
-        {
-            $this->code = config('httpstatus.server_error.internal_server_error');
-            $retorno->message = 'Erro ao buscar dados.';
-        }
-        
-        return response()->json($retorno, $this->code);
+        return $retorno;
     }
 
     private function calculaConversao($request)
@@ -63,7 +49,7 @@ class ConversaoController extends Controller
         $taxaPagamento = $request->forma_pagamento == 'BLT' ? self::TAXA_BOLETO : self::TAXA_CARTAO;
         $this->taxaPagamento = $request->valor/100*$taxaPagamento;
 
-        $taxaConversao = $request->valor < self::CONTROLE_TAXA_PAGAMENTO ? self::MAIOR_TAXA_PAGAMNTO : self::MENOR_TAXA_PAGAMNTO;
+        $taxaConversao = $request->valor < self::CONTROLE_TAXA_PAGAMENTO ? self::MAIOR_TAXA_PAGAMENTO : self::MENOR_TAXA_PAGAMENTO;
         $this->taxaConversao = $request->valor/100*$taxaConversao;
 
         $taxaTotal = $this->taxaConversao + $this->taxaPagamento;
@@ -88,17 +74,16 @@ class ConversaoController extends Controller
         $retorno->forma_pagamento = $request->forma_pagamento == 'BLT' ? 'Boleto' : 'Cartão de Crédito';
         $retorno->valor_moeda_conversao = round($this->valorConversao, 2);
         $retorno->valor_comprado_moeda_destino = round($this->valorParaConversao/$this->valorConversao, 2);
-        $retorno->taxa_conversao = $this->taxaConversao;
-        $retorno->taxa_pagamento = $this->taxaPagamento;
-        $retorno->valor_usado_conversao = $this->valorParaConversao;    
+        $retorno->taxa_conversao = round($this->taxaConversao, 2);
+        $retorno->taxa_pagamento = round($this->taxaPagamento, 2);
+        $retorno->valor_usado_conversao = round($this->valorParaConversao, 2);    
 
         return $this;
     }
 
     public function salvaHistorico($retorno)
     {
-        $retorno->id_usuario = \Auth::id();
-        HistoricoConversao::create((array)$retorno);
+        (new HistoricoConversaoBO)->salvaHistorico($retorno);
 
         return $this;
     }
