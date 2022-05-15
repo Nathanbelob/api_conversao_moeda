@@ -93,10 +93,13 @@ class ConversaoBO
 
     private function enviaEmail($retorno)
     {
-        $usuario = \Auth::user();
-        $retorno->usuario = $usuario->nome;
-        $retorno->data_hora = date('d/m/Y H:i:s');
-        Mail::to($usuario->email)->send(new EnviaResultadoConversao($retorno));
+        if(\env('MAIL_USERNAME'))
+        {
+            $usuario = \Auth::user();
+            $retorno->usuario = $usuario->nome;
+            $retorno->data_hora = date('d/m/Y H:i:s');
+            Mail::to($usuario->email)->send(new EnviaResultadoConversao($retorno));
+        }
 
         return $this;
     }
