@@ -18,13 +18,13 @@ class CreateHistoricoConversaoTable extends Migration
             $table->bigInteger('id_usuario')->unsigned();
             $table->string('moeda_origem', 6);
             $table->string('moeda_destino', 6);
-            $table->decimal('valor_para_conversao');
+            $table->decimal('valor_para_conversao', 8,2);
             $table->string('forma_pagamento', 20);
-            $table->decimal('valor_moeda_conversao');
-            $table->decimal('valor_comprado_moeda_destino');
-            $table->decimal('taxa_conversao');
-            $table->decimal('taxa_pagamento');
-            $table->decimal('valor_usado_conversao');
+            $table->decimal('valor_moeda_conversao',8,2);
+            $table->decimal('valor_comprado_moeda_destino',8,2);
+            $table->decimal('taxa_conversao',8,2);
+            $table->decimal('taxa_pagamento',8,2);
+            $table->decimal('valor_usado_conversao',8,2);
 
             $table->foreign('id_usuario')->references('id')->on('users');
             $table->timestamps();
