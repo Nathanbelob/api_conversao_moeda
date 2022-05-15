@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use App\Http\Requests\ConversaoRequest; 
 use App\Services\AwesomeAPIService;
 use App\Http\BO\HistoricoConversaoBO;
+use App\Mail\EnviaResultadoConversao;
+use Illuminate\Support\Facades\Mail;
 
 
 class ConversaoBO
@@ -39,7 +41,8 @@ class ConversaoBO
         $this->defineValorCambio($request)
              ->calculaConversao($request)
              ->montaRetorno($retorno, $request)
-             ->salvaHistorico($retorno);
+             ->salvaHistorico($retorno)
+             ->enviaEmail($retorno);
 
         return $retorno;
     }
@@ -81,9 +84,19 @@ class ConversaoBO
         return $this;
     }
 
-    public function salvaHistorico($retorno)
+    private function salvaHistorico($retorno)
     {
         (new HistoricoConversaoBO)->salvaHistorico($retorno);
+
+        return $this;
+    }
+
+    private function enviaEmail($retorno)
+    {
+        $usuario = \Auth::user();
+        $retorno->usuario = $usuario->nome;
+        $retorno->data_hora = date('d/m/Y H:i:s');
+        Mail::to($usuario->email)->send(new EnviaResultadoConversao($retorno));
 
         return $this;
     }
